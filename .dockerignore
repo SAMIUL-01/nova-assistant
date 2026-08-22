@@ -1,0 +1,17 @@
+venv/
+.venv/
+.env
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.git/
+.gitignore
+data/
+tests/
+README.md
+DEPLOY.md
+run.bat
+*.log
+.idea/
+.vscode/

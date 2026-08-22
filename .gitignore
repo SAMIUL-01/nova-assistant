@@ -1,0 +1,16 @@
+venv/
+.venv/
+.env
+__pycache__/
+*.pyc
+*.pyo
+data/*.db
+data/*.db-journal
+data/uploads/
+data/actions.log
+data/.session_secret
+nova.log
+*.log
+.pytest_cache/
+.idea/
+.vscode/

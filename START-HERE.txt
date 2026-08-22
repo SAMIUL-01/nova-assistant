@@ -1,0 +1,114 @@
+========================================================================
+  NOVA  -  START HERE
+========================================================================
+
+  You only need to do THREE things.
+
+------------------------------------------------------------------------
+  STEP 1  -  Install Python (skip if you already have it)
+------------------------------------------------------------------------
+
+  Go to:  https://www.python.org/downloads/
+  Download Python 3.12 and install it.
+
+  *** VERY IMPORTANT ***
+  On the first install screen, TICK the box that says:
+
+        [x] Add python.exe to PATH
+
+  If you miss that box, nothing else will work.
+
+------------------------------------------------------------------------
+  STEP 2  -  Double-click  SETUP.bat
+------------------------------------------------------------------------
+
+  It will:
+     - check Python
+     - create the virtual environment
+     - install every package
+     - ask you to paste your OpenRouter API key
+     - test that everything works
+
+  Get a free API key here:  https://openrouter.ai/keys
+
+  No key yet? Just press Enter when it asks. The app will run in
+  TEST MODE with fake replies so you can try the interface. You can
+  add the real key later by running SETUP.bat again.
+
+  Wait for it to say:  SETUP COMPLETE
+
+------------------------------------------------------------------------
+  STEP 3  -  Double-click  INSTALL-SHORTCUT.bat   (once)
+------------------------------------------------------------------------
+
+  This puts a Nova icon on your Desktop, and can start Nova automatically
+  when Windows starts.
+
+  From now on, just double-click the Nova icon on your Desktop.
+  No black window. No commands. Nova opens in its own clean app window.
+
+------------------------------------------------------------------------
+  THE THREE WAYS TO START NOVA
+------------------------------------------------------------------------
+
+  Nova icon on Desktop  ->  best. Hidden server, own app window.
+  Nova.vbs              ->  the same thing, from inside this folder.
+  START.bat             ->  old way, shows the black window with logs.
+                            Useful when you want to see what is happening.
+
+  TO STOP NOVA:  double-click  STOP-NOVA.bat
+  (With START.bat you can also just press CTRL+C or close the window.)
+
+------------------------------------------------------------------------
+  MAKE IT A REAL APP (optional, 5 seconds)
+------------------------------------------------------------------------
+
+  With Nova open in Chrome, Edge or Brave, look in the address bar for
+  the small INSTALL icon (a screen with a down-arrow), and click it.
+
+  Nova then behaves like an installed program: Start-menu entry, taskbar
+  icon, its own window.
+
+  On your phone: Chrome menu -> "Add to Home screen".
+
+========================================================================
+  IF SOMETHING GOES WRONG
+========================================================================
+
+  Double-click  DOCTOR.bat
+
+  It checks all 20+ things that can break and tells you exactly what to
+  fix. If you are still stuck, copy the whole DOCTOR.bat output and send
+  it for help - it contains everything needed to diagnose the problem.
+
+========================================================================
+  WHAT CAN IT DO?
+========================================================================
+
+  - Chat with AI, replies stream in word by word
+  - REMEMBERS YOU across every chat (click the brain button)
+  - VOICE: press the microphone to speak, press the speaker to listen
+  - FILES: press the paperclip to upload a PDF/Word/text file and ask
+    questions about it
+  - Multiple chats, dark/light theme, works on your phone
+
+========================================================================
+  USING IT ON YOUR PHONE
+========================================================================
+
+  START.bat shows a second address like  http://192.168.0.105:8000
+  Open that on your phone (same Wi-Fi). Allow Python through the
+  Windows Firewall when it asks.
+
+  NOTE: the microphone will NOT work on that address. Browsers only
+  allow the mic on 127.0.0.1 or on a real https:// site.
+  To get voice on your phone, deploy the app - see DEPLOY.md.
+
+========================================================================
+  MORE DOCUMENTATION
+========================================================================
+
+  README.md   - full feature list, settings, troubleshooting
+  DEPLOY.md   - put it online with an https:// address
+
+========================================================================
