@@ -1,0 +1,36 @@
+{
+  "name": "Nova",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+
+  "// why": [
+    "This file is what makes the 'Open in GitHub Codespaces' button work.",
+    "GitHub builds this container in the cloud, installs Nova, and starts it.",
+    "Nothing is installed on the visitor's computer.",
+    "",
+    "Two settings are forced for the cloud:",
+    "  AI_OFFLINE_MOCK=1  so Nova runs instantly with no API key",
+    "  ACTIONS_ENABLED=false because actions would affect the cloud",
+    "  container, not the visitor's own machine.",
+    "Add your OpenRouter key to .env and flip the mock flag for real replies."
+  ],
+
+  "postCreateCommand": "pip install --user -r requirements.txt && python tools/make_icons.py || true && cp -n .env.example .env && sed -i 's/^AI_OFFLINE_MOCK=0/AI_OFFLINE_MOCK=1/' .env && sed -i 's/^ACTIONS_ENABLED=true/ACTIONS_ENABLED=false/' .env",
+
+  "postAttachCommand": {
+    "nova": "python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
+  },
+
+  "forwardPorts": [8000],
+  "portsAttributes": {
+    "8000": {
+      "label": "Nova",
+      "onAutoForward": "openPreview"
+    }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-python.python"]
+    }
+  }
+}
