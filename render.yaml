@@ -34,6 +34,16 @@ services:
       - key: MEMORY_ENABLED
         value: "true"
 
+      # Actions control the machine Nova runs on. In the cloud that is this
+      # server, not your PC, so they are switched off here on purpose.
+      - key: ACTIONS_ENABLED
+        value: "false"
+
+      # A public URL with no password lets strangers spend your API credits
+      # and read your memories. Render will prompt you for this value.
+      - key: AUTH_PASSWORD
+        sync: false
+
       # Lock this to your real URL once you know it, e.g.
       # https://nova.onrender.com
       - key: ALLOWED_ORIGINS

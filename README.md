@@ -8,7 +8,32 @@ Your own personal AI assistant, running on your machine. Nova chats, remembers
 who you are, listens and speaks, reads your documents, and can **do things on
 your computer** — open apps and websites, manage files, run git.
 
-Windows users: download, double-click `SETUP.bat`, done.
+---
+
+## ▶ Try Nova right now
+
+**No install, no API key** — runs in your browser in about two minutes:
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/SAMIUL-01/nova-assistant?quickstart=1)
+
+It starts in demo mode with fake replies so you can click around. Add an
+OpenRouter key to `.env` and set `AI_OFFLINE_MOCK=0` for real answers.
+
+**Want your own Nova on the internet?** One click, your own copy, your own URL:
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/SAMIUL-01/nova-assistant)
+
+**Want the full JARVIS version that controls your PC?** That one has to run on
+your own computer — download, then double-click `SETUP.bat`:
+
+[⬇ Download Nova](https://github.com/SAMIUL-01/nova-assistant/archive/refs/heads/main.zip)
+
+> Why can't you just click a link and have the full thing? GitHub only serves
+> files — it cannot run a Python server, and no cloud server can open apps on
+> *your* laptop. Codespaces and Render give you the chat; `SETUP.bat` gives you
+> the assistant that controls your machine.
+
+---
 
 Frontend is plain HTML/CSS/JavaScript. Backend is Python + FastAPI. The AI comes
 from OpenRouter (NVIDIA Nemotron 3.5 Lightning, free tier). Your API key stays on
