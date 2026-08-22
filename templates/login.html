@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0d1117" />
+  <title>{{ app_name }} — Sign in</title>
+  <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/nova-192.png" />
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+
+<div class="login-page">
+  <form class="login-card" id="loginForm" autocomplete="on">
+    <div class="login-logo">✨</div>
+    <h1>{{ app_name }}</h1>
+    <p class="login-sub">Enter your password to continue.</p>
+
+    <input type="password" id="password" name="password"
+           placeholder="Password" autocomplete="current-password"
+           autofocus required />
+
+    <button type="submit" class="btn-primary login-btn" id="loginBtn">Sign in</button>
+
+    <div class="login-error" id="loginError" hidden></div>
+
+    <p class="login-hint">
+      The password is the <code>AUTH_PASSWORD</code> value in your
+      <code>.env</code> file.
+    </p>
+  </form>
+</div>
+
+<script>
+  const form = document.getElementById("loginForm");
+  const errorBox = document.getElementById("loginError");
+  const button = document.getElementById("loginBtn");
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    errorBox.hidden = true;
+    button.disabled = true;
+    button.textContent = "Checking...";
+
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: document.getElementById("password").value }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok) {
+        window.location.href = "/";
+        return;
+      }
+      errorBox.textContent = data.detail || "Sign in failed.";
+      errorBox.hidden = false;
+    } catch (_) {
+      errorBox.textContent = "Could not reach Nova. Is the server running?";
+      errorBox.hidden = false;
+    }
+
+    button.disabled = false;
+    button.textContent = "Sign in";
+    document.getElementById("password").select();
+  });
+</script>
+</body>
+</html>
