@@ -1,0 +1,52 @@
+# Fly.io configuration.
+#
+# Fly gives you a free persistent volume, so your chats survive restarts.
+# Full steps are in DEPLOY.md.
+#
+#   fly launch --no-deploy      (creates the app, keep this file)
+#   fly volumes create chat_data --size 1 --region sin
+#   fly secrets set OPENROUTER_API_KEY=sk-or-...
+#   fly deploy
+
+app = "nova"
+primary_region = "sin"          # Singapore; see `fly platform regions`
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  AI_MODEL = "nvidia/nemotron-3.5-lightning:free"
+  APP_NAME = "Nova"
+  AI_OFFLINE_MOCK = "0"
+  MEMORY_ENABLED = "true"
+  DB_PATH = "/data/chat.db"
+  UPLOAD_DIR = "/data/uploads"
+  ALLOWED_ORIGINS = "*"
+
+# Keeps the SQLite database and uploaded files between deploys.
+[mounts]
+  source = "chat_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.http_options.response]
+    # Server-Sent Events must not be buffered, or streaming looks frozen.
+    pristine = true
+
+[[http_service.checks]]
+  grace_period = "10s"
+  interval = "30s"
+  method = "GET"
+  timeout = "5s"
+  path = "/api/health"
+
+# One shared CPU is plenty for personal use.
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

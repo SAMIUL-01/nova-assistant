@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0d1117" />
+  <title>{{ app_name }}</title>
+  <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/nova-192.png" />
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png" />
+  <link rel="manifest" href="/static/manifest.webmanifest" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Nova" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <link rel="stylesheet" href="/static/css/style.css" />
+
+  <!-- Code highlighting themes: app.js enables one and disables the other -->
+  <link rel="stylesheet" id="hljsDark"
+        href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css" />
+  <link rel="stylesheet" id="hljsLight" disabled
+        href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css" />
+
+  <!-- Markdown rendering, HTML sanitising, syntax highlighting -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.5/dist/purify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <!-- ================= SIDEBAR ================= -->
+  <aside class="sidebar" id="sidebar" aria-label="Conversations">
+    <div class="sidebar-top">
+      <button class="btn-new" id="btnNewChat">
+        <span class="plus">+</span> New Chat
+      </button>
+      <button class="icon-btn sidebar-close" id="btnCloseSidebar" aria-label="Close menu">✕</button>
+    </div>
+
+    <div class="sidebar-label">Recent Chats</div>
+    <nav class="chat-list" id="chatList">
+      <div class="empty-hint">No chats yet.</div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="ghost-btn" id="btnMemory">
+        <span>🧠</span> <span>Memory</span>
+        <span class="pill" id="memoryCount">0</span>
+      </button>
+      <button class="ghost-btn" id="btnTheme">
+        <span id="themeIcon">☀️</span> <span id="themeLabel">Light mode</span>
+      </button>
+      <div class="model-badge" id="modelBadge" title="Configured in .env">…</div>
+    </div>
+  </aside>
+
+  <div class="overlay" id="overlay" hidden></div>
+
+  <!-- ================= MAIN ================= -->
+  <main class="main">
+    <header class="header">
+      <button class="icon-btn menu-btn" id="btnMenu" aria-label="Open menu">☰</button>
+      <h1 class="header-title" id="headerTitle">{{ app_name }}</h1>
+      <button class="icon-btn" id="btnSpeaker" aria-label="Toggle spoken replies"
+              title="Speak replies aloud">🔈</button>
+      <button class="icon-btn" id="btnThemeTop" aria-label="Toggle theme">🌗</button>
+    </header>
+
+    <!-- Welcome screen (shown when a chat is empty) -->
+    <section class="welcome" id="welcome">
+      <div class="welcome-inner">
+        <div class="welcome-logo">✨</div>
+        <h2>Hi, I'm Nova 👋</h2>
+        <p>How can I help you today?</p>
+        <div class="suggestions">
+          <button class="suggestion" data-prompt="Explain how Java Servlets work, step by step.">
+            <strong>Explain a concept</strong><span>How do Java Servlets work?</span>
+          </button>
+          <button class="suggestion" data-prompt="Write a Python function that reads a CSV file and returns the rows as dictionaries.">
+            <strong>Write some code</strong><span>Python CSV reader function</span>
+          </button>
+          <button class="suggestion" data-prompt="Remember that my name is ">
+            <strong>Teach me about you</strong><span>"Remember that my name is..."</span>
+          </button>
+          <button class="suggestion" data-prompt="Summarise the document I attached.">
+            <strong>Ask about a file</strong><span>Attach a PDF with 📎, then ask</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Chat transcript -->
+    <section class="chat" id="chat" hidden></section>
+
+    <!-- Composer -->
+    <footer class="composer">
+      <div class="composer-inner">
+
+        <!-- Attached files for this conversation -->
+        <div class="attachments" id="attachments" hidden></div>
+
+        <div class="input-wrap">
+          <input type="file" id="fileInput" hidden />
+          <button class="tool-btn" id="btnAttach" aria-label="Attach a file"
+                  title="Attach a PDF, Word, or text file">📎</button>
+
+          <textarea
+            id="input"
+            rows="1"
+            placeholder="Type your message..."
+            maxlength="{{ max_chars }}"
+            autocomplete="off"></textarea>
+
+          <button class="tool-btn mic-btn" id="btnMic" aria-label="Speak your message"
+                  title="Speak your message">🎤</button>
+          <button class="send-btn" id="btnSend" aria-label="Send message" disabled>➤</button>
+        </div>
+
+        <div class="composer-meta">
+          <span id="charCount">0 / {{ max_chars }}</span>
+          <span class="hint" id="hint">Enter to send · Shift + Enter for a new line</span>
+        </div>
+      </div>
+    </footer>
+  </main>
+</div>
+
+<!-- ================= MEMORY / SETTINGS PANEL ================= -->
+<div class="modal-backdrop" id="memoryModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="memoryTitle">
+    <div class="modal-head">
+      <h2 id="memoryTitle">🧠 What I remember about you</h2>
+      <button class="icon-btn" id="btnCloseMemory" aria-label="Close">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <p class="modal-note">
+        These facts are used in <strong>every</strong> conversation. They are
+        learned automatically from what you tell me, and you can edit or delete
+        any of them. Nothing is remembered secretly.
+      </p>
+
+      <div class="memory-add">
+        <input type="text" id="memoryInput" maxlength="200"
+               placeholder="Add something I should always know..." />
+        <button class="btn-primary" id="btnAddMemory">Add</button>
+      </div>
+
+      <div class="memory-list" id="memoryList"></div>
+
+      <div class="settings-block">
+        <h3>Voice</h3>
+        <label class="switch">
+          <input type="checkbox" id="optSpeak" />
+          <span>Speak replies aloud</span>
+        </label>
+        <label class="switch">
+          <input type="checkbox" id="optAutoSend" />
+          <span>Send automatically when I stop speaking (hands-free)</span>
+        </label>
+        <p class="modal-note" id="voiceSupportNote"></p>
+      </div>
+    </div>
+
+    <div class="modal-foot">
+      <button class="btn-danger" id="btnClearMemory">Forget everything</button>
+      <button class="btn-primary" id="btnDoneMemory">Done</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>

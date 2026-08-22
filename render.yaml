@@ -1,0 +1,53 @@
+# Render blueprint. In Render: New + -> Blueprint -> pick your repo.
+# This file is set up for the FREE plan, which has NO persistent disk:
+# chats reset whenever the service redeploys or wakes from sleep.
+#
+# To keep your chats forever, uncomment the "disk" block and the two env vars
+# marked KEEP-DATA below, then upgrade the service to a paid instance type
+# (disks are not available on the free plan).
+
+services:
+  - type: web
+    name: nova
+    runtime: python
+    plan: free
+    region: singapore          # closest to Bangladesh; also: oregon, frankfurt
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.6"
+
+      # Paste your key in the Render dashboard, NOT here.
+      # sync:false means "prompt me for this value, never store it in git".
+      - key: OPENROUTER_API_KEY
+        sync: false
+
+      - key: AI_MODEL
+        value: nvidia/nemotron-3.5-lightning:free
+      - key: APP_NAME
+        value: Nova
+      - key: AI_OFFLINE_MOCK
+        value: "0"
+      - key: MEMORY_ENABLED
+        value: "true"
+
+      # Lock this to your real URL once you know it, e.g.
+      # https://nova.onrender.com
+      - key: ALLOWED_ORIGINS
+        value: "*"
+
+      # KEEP-DATA: uncomment these two together with the disk block below.
+      # - key: DB_PATH
+      #   value: /var/data/chat.db
+      # - key: UPLOAD_DIR
+      #   value: /var/data/uploads
+
+    # KEEP-DATA: a disk makes your chats and uploads survive redeploys.
+    # Requires a paid instance type.
+    # disk:
+    #   name: chat-data
+    #   mountPath: /var/data
+    #   sizeGB: 1
