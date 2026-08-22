@@ -45,32 +45,15 @@ the server and is never sent to the browser.
 
 ## Screenshots
 
-**Chat with markdown, syntax highlighting, and copy buttons**
+> The PNG files are not stored in git (binary files bloat a repo). Run
+> `SETUP.bat` and see it live in 2 minutes — or grab them from the
+> [release zip](https://github.com/SAMIUL-01/nova-assistant/releases).
 
-![Chat in dark mode](docs/screenshots/01-chat-dark.png)
-
-**Light mode** — one click, remembered between visits
-
-![Chat in light mode](docs/screenshots/02-chat-light.png)
-
-**Long-term memory** — everything it knows about you, fully editable
-
-![Memory panel](docs/screenshots/03-memory.png)
-
-**Actions** — Nova does things, and asks before anything risky
-
-![Action cards](docs/screenshots/07-actions.png)
-
-**Welcome screen** with suggestion buttons
-
-![Welcome screen](docs/screenshots/04-welcome.png)
-
-**On a phone** — chat, and the slide-out sidebar
-
-<p>
-  <img src="docs/screenshots/05-mobile-chat.png" alt="Mobile chat" width="45%">
-  <img src="docs/screenshots/06-mobile-sidebar.png" alt="Mobile sidebar" width="45%">
-</p>
+- **Chat** — streaming replies, markdown, syntax highlighting, copy buttons
+- **Memory panel** — every fact Nova knows about you, editable
+- **Action cards** — green for done, amber with Confirm/Cancel for risky ones
+- **Mobile** — slide-out sidebar, full width, install to home screen
+- **Themes** — dark by default, light with one click
 
 ---
 

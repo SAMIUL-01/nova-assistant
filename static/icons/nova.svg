@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0d1117"/>
+      <stop offset="100%" stop-color="#1a2338"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="113" fill="url(#bg)"/>
+  <!-- main sparkle -->
+  <path d="M256 46 L278 229 L461 251 L278 273 L256 456 L234 273 L51 251 L234 229 Z"
+        fill="#6da8ff"/>
+  <path d="M256 118 L270 240 L392 251 L270 262 L256 384 L242 262 L120 251 L242 240 Z"
+        fill="#e7f1ff"/>
+  <!-- small companions -->
+  <path d="M397 72 L403 119 L450 125 L403 131 L397 178 L391 131 L344 125 L391 119 Z"
+        fill="#6da8ff"/>
+  <path d="M120 348 L124 382 L158 386 L124 390 L120 424 L116 390 L82 386 L116 382 Z"
+        fill="#6da8ff"/>
+</svg>

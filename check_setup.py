@@ -171,6 +171,14 @@ if db.exists():
 else:
     print(f"{OK} no database yet  ->  it will be created on first run")
 
+icons_ok = (BASE_DIR / "static" / "icons" / "nova-192.png").exists()
+if not icons_ok:
+    print(f"{WARN} app icons missing  ->  run:  python tools\\make_icons.py")
+    warnings.append(("App icons not generated",
+                     "Run:  python tools\\make_icons.py   (cosmetic only)"))
+else:
+    print(f"{OK} app icons present")
+
 # ---------------------------------------------------------------- 6. Port
 print("\n--- Network ---")
 port_free = True

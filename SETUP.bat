@@ -96,6 +96,17 @@ if errorlevel 1 (
 )
 echo        All packages installed.
 
+REM ---- 3b. app icons (PNG/ICO are generated, not stored in git) -----------
+if not exist "static\icons\nova-192.png" (
+    echo        Generating app icons...
+    python tools\make_icons.py >nul 2>&1
+    if errorlevel 1 (
+        echo        [note] Icon generation skipped - Nova still works fine.
+    ) else (
+        echo        Icons created.
+    )
+)
+
 REM ---------------------------------------------------------------- 4. .env
 echo.
 echo  [4/5] Setting up your configuration...
