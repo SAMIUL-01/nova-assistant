@@ -1,6 +1,6 @@
 # Nova
 
-[![tests](https://github.com/SAMIUL-01/nova/actions/workflows/tests.yml/badge.svg)](https://github.com/SAMIUL-01/nova/actions/workflows/tests.yml)
+[![tests](https://github.com/SAMIUL-01/nova-assistant/actions/workflows/tests.yml/badge.svg)](https://github.com/SAMIUL-01/nova-assistant/actions/workflows/tests.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 
