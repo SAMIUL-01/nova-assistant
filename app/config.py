@@ -121,6 +121,9 @@ class Settings:
     ACTIONS_ENABLED: bool = _env_bool("ACTIONS_ENABLED", True)
     # Ask before anything destructive (deleting/moving files, git push).
     ACTIONS_CONFIRM: bool = _env_bool("ACTIONS_CONFIRM", True)
+    # Paranoid mode: also ask before harmless-but-visible things such as
+    # creating a file or opening an app.
+    STRICT_CONFIRM: bool = _env_bool("STRICT_CONFIRM", False)
     # Nova may only touch files inside this folder. Nothing outside it.
     NOVA_WORKSPACE: Path = Path(
         os.getenv("NOVA_WORKSPACE", "") or (Path.home() / "Nova")

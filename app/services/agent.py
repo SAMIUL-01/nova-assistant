@@ -18,7 +18,7 @@ import time
 from typing import Dict, Iterator
 
 from app.config import settings
-from app.services import actions
+from app.services import actions, security
 from app.services.ai_service import AIServiceError, ai_service, _friendly_error
 
 logger = logging.getLogger(__name__)
@@ -167,10 +167,29 @@ def run_agent(history: list, extra_context: str, conversation_id: int) -> Iterat
             call_id = call["id"] or f"call_{i}"
             detail = actions.describe(name, args)
 
-            if actions.needs_confirmation(name, args):
+            decision = security.evaluate(name, args)
+
+            # Blocked outright: unknown tool, or a capability switched off.
+            if decision.denied:
+                actions.audit(name, args, f"DENIED: {decision.reason}",
+                              decision.risk.name, "deny")
+                yield {"type": "tool", "name": name, "detail": detail,
+                       "result": f"Not allowed: {decision.reason}"}
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": call_id,
+                    "content": f"REFUSED: {decision.reason} "
+                               "Tell the user, and do not try again.",
+                })
+                continue
+
+            # Needs the user's approval first.
+            if decision.needs_confirmation:
                 token = park_action(name, args, conversation_id)
                 awaiting_confirmation = True
-                yield {"type": "confirm", "token": token, "detail": detail, "name": name}
+                yield {"type": "confirm", "token": token, "detail": detail,
+                       "name": name, "risk": decision.risk.name,
+                       "reason": decision.reason}
                 messages.append({
                     "role": "tool",
                     "tool_call_id": call_id,
@@ -200,11 +219,51 @@ def run_agent(history: list, extra_context: str, conversation_id: int) -> Iterat
     logger.info("Agent stopped after %s rounds", settings.MAX_TOOL_ROUNDS)
 
 
+def run_routed(command, conversation_id: int) -> Iterator[dict]:
+    """
+    Execute a command the router understood, with no model call at all.
+
+    Emits the same events as run_agent so the browser renders it identically,
+    and still goes through the security layer.
+    """
+    name, args = command.tool, command.arguments
+    detail = actions.describe(name, args)
+    decision = security.evaluate(name, args)
+
+    if decision.denied:
+        actions.audit(name, args, f"DENIED: {decision.reason}",
+                      decision.risk.name, "deny")
+        yield {"type": "text", "text": decision.reason}
+        return
+
+    if decision.needs_confirmation:
+        token = park_action(name, args, conversation_id)
+        yield {"type": "text", "text": "That one needs your approval first."}
+        yield {"type": "confirm", "token": token, "detail": detail,
+               "name": name, "risk": decision.risk.name, "reason": decision.reason}
+        return
+
+    # Say something immediately: this is what makes voice feel instant.
+    yield {"type": "text", "text": command.spoken}
+    try:
+        result = actions.execute(name, args)
+        yield {"type": "tool", "name": name, "detail": detail, "result": result}
+    except actions.ActionError as exc:
+        yield {"type": "tool", "name": name, "detail": detail,
+               "result": f"Failed: {exc}"}
+
+
 def confirm_and_run(token: str) -> dict:
     """Execute a parked action after the user pressed Confirm."""
     pending = take_pending(token)
     name, args = pending["name"], pending["arguments"]
-    result = actions.execute(name, args)          # may raise ActionError
+
+    # The user approving does not bypass a disabled capability.
+    decision = security.evaluate(name, args)
+    if decision.denied:
+        raise actions.ActionError(decision.reason)
+
+    result = actions.execute(name, args, _approved=True)
     return {
         "name": name,
         "detail": actions.describe(name, args),

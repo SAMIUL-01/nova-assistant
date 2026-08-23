@@ -19,6 +19,7 @@ from app.config import settings
 from app.database import db
 from app.models.schemas import ChatRequest, ChatResponse
 from app.services import agent, documents, memory
+from app.services import router as command_router
 from app.services.ai_service import AIServiceError, ai_service
 from app.services.auth import require_login
 from app.services.rate_limit import enforce_rate_limit
@@ -85,6 +86,18 @@ def _use_agent() -> bool:
     return settings.ACTIONS_ENABLED and not settings.AI_OFFLINE_MOCK
 
 
+def _fast_path(message: str):
+    """
+    Try the router first. Typed and spoken commands both arrive here, so the
+    two can never behave differently.
+
+    Needs no model, so it works even in offline mock mode.
+    """
+    if not settings.ACTIONS_ENABLED:
+        return None
+    return command_router.route(message)
+
+
 def _transcript(text: str, tool_lines: list) -> str:
     """What gets saved to history, so past chats still show what Nova did."""
     saved = text.strip()
@@ -101,7 +114,18 @@ def chat(payload: ChatRequest, background: BackgroundTasks):
 
     tools_used, pending = [], []
 
-    if _use_agent():
+    routed = _fast_path(payload.message)
+    if routed is not None:
+        parts = []
+        for event in agent.run_routed(routed, conversation_id):
+            if event["type"] == "text":
+                parts.append(event["text"])
+            elif event["type"] == "tool":
+                tools_used.append({"detail": event["detail"], "result": event["result"]})
+            elif event["type"] == "confirm":
+                pending.append({"token": event["token"], "detail": event["detail"]})
+        reply = "".join(parts)
+    elif _use_agent():
         parts = []
         failure = None
         for event in agent.run_agent(history, extra_context, conversation_id):
@@ -155,31 +179,42 @@ def chat_stream(payload: ChatRequest, background: BackgroundTasks):
         failed = None
 
         try:
-            if _use_agent():
-                for event in agent.run_agent(history, extra_context, conversation_id):
-                    kind = event["type"]
-                    if kind == "text":
-                        collected.append(event["text"])
-                        yield _sse("token", {"text": event["text"]})
-                    elif kind == "tool":
-                        tool_lines.append(event["detail"])
-                        yield _sse("tool", {
-                            "name": event["name"],
-                            "detail": event["detail"],
-                            "result": event["result"],
-                        })
-                    elif kind == "confirm":
-                        yield _sse("confirm", {
-                            "token": event["token"],
-                            "detail": event["detail"],
-                            "name": event["name"],
-                        })
-                    elif kind == "error":
-                        failed = event["detail"]
+            routed = _fast_path(payload.message)
+
+            # One rendering loop for all three sources, so a fast-path
+            # command and a model reply look identical in the browser.
+            if routed is not None:
+                source = agent.run_routed(routed, conversation_id)
+            elif _use_agent():
+                source = agent.run_agent(history, extra_context, conversation_id)
             else:
-                for piece in ai_service.stream(history, extra_context=extra_context):
-                    collected.append(piece)
-                    yield _sse("token", {"text": piece})
+                source = (
+                    {"type": "text", "text": piece}
+                    for piece in ai_service.stream(history, extra_context=extra_context)
+                )
+
+            for event in source:
+                kind = event["type"]
+                if kind == "text":
+                    collected.append(event["text"])
+                    yield _sse("token", {"text": event["text"]})
+                elif kind == "tool":
+                    tool_lines.append(event["detail"])
+                    yield _sse("tool", {
+                        "name": event["name"],
+                        "detail": event["detail"],
+                        "result": event["result"],
+                    })
+                elif kind == "confirm":
+                    yield _sse("confirm", {
+                        "token": event["token"],
+                        "detail": event["detail"],
+                        "name": event["name"],
+                        "risk": event.get("risk", ""),
+                        "reason": event.get("reason", ""),
+                    })
+                elif kind == "error":
+                    failed = event["detail"]
 
         except AIServiceError as exc:
             logger.warning("Stream aborted: %s", exc.user_message)

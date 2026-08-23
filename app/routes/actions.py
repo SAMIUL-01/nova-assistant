@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.config import settings
 from app.database import db
 from app.models.schemas import ActionToken, SimpleResult
-from app.services import actions, agent
+from app.services import actions, agent, security
 from app.services.auth import require_login
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,9 @@ def list_actions():
             {
                 "name": name,
                 "description": spec["description"],
-                "needs_confirmation": spec["destructive"],
+                "risk": spec["risk"].name,
+                "capability": spec["capability"],
+                "needs_confirmation": spec["risk"] >= security.ALWAYS_CONFIRM_AT,
             }
             for name, spec in actions.REGISTRY.items()
         ],

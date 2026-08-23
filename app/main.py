@@ -20,6 +20,7 @@ from app.database.db import DatabaseError, init_db
 from app.routes import actions as actions_routes
 from app.routes import auth as auth_routes
 from app.routes import chat, conversations, memory
+from app.routes import permissions as permissions_routes
 from app.services import auth as auth_service
 
 # File uploads need the optional 'python-multipart' package. If it is missing,
@@ -112,6 +113,7 @@ app.include_router(conversations.router)
 app.include_router(chat.router)
 app.include_router(memory.router)
 app.include_router(actions_routes.router)
+app.include_router(permissions_routes.router)
 
 if UPLOADS_AVAILABLE:
     app.include_router(uploads.router)

@@ -34,6 +34,7 @@ from pathlib import Path
 from typing import Callable, Dict
 
 from app.config import settings
+from app.services.security import Risk
 
 logger = logging.getLogger(__name__)
 
@@ -154,15 +155,19 @@ def _rel(path: Path) -> str:
         return str(path)
 
 
-def audit(action: str, args: dict, outcome: str) -> None:
-    """Append one line to the action log. Never raises."""
+def audit(action: str, args: dict, outcome: str, risk: str = "", decision: str = "") -> None:
+    """Append one line to the action log. Never raises, never stores secrets."""
     try:
+        from app.services.security import scrub
+
         settings.ACTION_LOG.parent.mkdir(parents=True, exist_ok=True)
         line = json.dumps({
             "time": datetime.now().astimezone().isoformat(timespec="seconds"),
             "action": action,
-            "args": args,
-            "outcome": outcome[:400],
+            "risk": risk,
+            "decision": decision,
+            "args": scrub(args),
+            "outcome": scrub(outcome)[:400],
         })
         with open(settings.ACTION_LOG, "a", encoding="utf-8") as fh:
             fh.write(line + "\n")
@@ -392,7 +397,8 @@ def act_current_time() -> str:
 REGISTRY: Dict[str, dict] = {
     "open_website": {
         "fn": act_open_website,
-        "destructive": False,
+        "risk": Risk.MODERATE,
+        "capability": "web",
         "description": "Open a website in the user's browser. Accepts a full URL "
                        "or a short name like youtube, facebook, instagram, gmail, github.",
         "params": {
@@ -402,7 +408,8 @@ REGISTRY: Dict[str, dict] = {
     },
     "open_app": {
         "fn": act_open_app,
-        "destructive": False,
+        "risk": Risk.MODERATE,
+        "capability": "pc_control",
         "description": "Open a program on the computer. Allowed: "
                        + ", ".join(sorted(APPS)),
         "params": {"name": {"type": "string", "description": "Program name."}},
@@ -410,7 +417,8 @@ REGISTRY: Dict[str, dict] = {
     },
     "list_files": {
         "fn": act_list_files,
-        "destructive": False,
+        "risk": Risk.SAFE,
+        "capability": "files",
         "description": "List files and folders inside the Nova workspace.",
         "params": {"path": {"type": "string",
                             "description": "Folder relative to the workspace. Use '.' for the top."}},
@@ -418,14 +426,16 @@ REGISTRY: Dict[str, dict] = {
     },
     "read_file": {
         "fn": act_read_file,
-        "destructive": False,
+        "risk": Risk.SAFE,
+        "capability": "files",
         "description": "Read a text file from the Nova workspace.",
         "params": {"path": {"type": "string", "description": "File path in the workspace."}},
         "required": ["path"],
     },
     "search_files": {
         "fn": act_search_files,
-        "destructive": False,
+        "risk": Risk.SAFE,
+        "capability": "files",
         "description": "Search the workspace for files whose name contains the query.",
         "params": {
             "query": {"type": "string", "description": "Text to look for in file names."},
@@ -435,14 +445,16 @@ REGISTRY: Dict[str, dict] = {
     },
     "create_folder": {
         "fn": act_create_folder,
-        "destructive": False,
+        "risk": Risk.MODERATE,
+        "capability": "files",
         "description": "Create a new folder inside the Nova workspace.",
         "params": {"path": {"type": "string", "description": "Folder path to create."}},
         "required": ["path"],
     },
     "create_file": {
         "fn": act_create_file,
-        "destructive": False,
+        "risk": Risk.MODERATE,
+        "capability": "files",
         "description": "Create or overwrite a text file inside the Nova workspace.",
         "params": {
             "path": {"type": "string", "description": "File path in the workspace."},
@@ -452,7 +464,8 @@ REGISTRY: Dict[str, dict] = {
     },
     "delete_path": {
         "fn": act_delete,
-        "destructive": True,
+        "risk": Risk.DESTRUCTIVE,
+        "capability": "files",
         "description": "Delete a file or folder from the workspace. It goes to the "
                        "Recycle Bin and can be restored. Requires user confirmation.",
         "params": {"path": {"type": "string", "description": "What to delete."}},
@@ -460,7 +473,8 @@ REGISTRY: Dict[str, dict] = {
     },
     "move_path": {
         "fn": act_move,
-        "destructive": True,
+        "risk": Risk.DESTRUCTIVE,
+        "capability": "files",
         "description": "Move or rename a file or folder inside the workspace.",
         "params": {
             "source": {"type": "string", "description": "Existing path."},
@@ -470,7 +484,12 @@ REGISTRY: Dict[str, dict] = {
     },
     "git": {
         "fn": act_git,
-        "destructive": True,
+        # Reading history is safe; committing and pushing is not. The
+        # escalate hook below decides per subcommand.
+        "risk": Risk.MODERATE,
+        "capability": "git",
+        "escalate": lambda args: (args.get("command") or "").strip().lower()
+                                 in GIT_DESTRUCTIVE,
         "description": "Run a git command in the git root folder. Allowed: "
                        + ", ".join(sorted(GIT_ALLOWED)),
         "params": {
@@ -482,14 +501,16 @@ REGISTRY: Dict[str, dict] = {
     },
     "system_info": {
         "fn": act_system_info,
-        "destructive": False,
+        "risk": Risk.SAFE,
+        "capability": "system",
         "description": "Report time, operating system, disk space and workspace location.",
         "params": {},
         "required": [],
     },
     "current_time": {
         "fn": act_current_time,
-        "destructive": False,
+        "risk": Risk.SAFE,
+        "capability": "system",
         "description": "Get the current date and time.",
         "params": {},
         "required": [],
@@ -498,12 +519,11 @@ REGISTRY: Dict[str, dict] = {
 
 
 def is_destructive(name: str) -> bool:
+    """True when a tool can cause damage. Unknown tools count as dangerous."""
     spec = REGISTRY.get(name)
-    if not spec:
-        return True                       # unknown = treat as dangerous
-    if name == "git":
-        return True                       # decided per subcommand at call time
-    return bool(spec["destructive"])
+    if spec is None:
+        return True
+    return spec["risk"] >= Risk.SENSITIVE
 
 
 def git_is_destructive(arguments: dict) -> bool:
@@ -511,11 +531,14 @@ def git_is_destructive(arguments: dict) -> bool:
 
 
 def needs_confirmation(name: str, arguments: dict) -> bool:
-    if not settings.ACTIONS_CONFIRM:
-        return False
-    if name == "git":
-        return git_is_destructive(arguments)
-    return is_destructive(name)
+    """
+    Ask the security layer, never decide here.
+
+    Kept as a thin wrapper so older call sites keep working.
+    """
+    from app.services import security
+
+    return security.evaluate(name, arguments or {}).needs_confirmation
 
 
 def tool_schemas() -> list:
@@ -557,16 +580,31 @@ def describe(name: str, arguments: dict) -> str:
     }.get(name, f"Run {name}")
 
 
-def execute(name: str, arguments: dict) -> str:
-    """Run an action. Raises ActionError with a user-safe message on failure."""
-    if not settings.ACTIONS_ENABLED:
-        raise ActionError("Actions are switched off. Set ACTIONS_ENABLED=true in .env.")
+def execute(name: str, arguments: dict, _approved: bool = False) -> str:
+    """
+    Run an action. Raises ActionError with a user-safe message on failure.
 
-    spec = REGISTRY.get(name)
-    if not spec:
-        raise ActionError(f"I do not have an action called '{name}'.")
+    The security layer is consulted here as well as in the agent, so a tool
+    can never run just because one call site forgot to check. `_approved` is
+    set only by the confirmation endpoint, after the user pressed Confirm.
+    """
+    from app.services import security
 
     arguments = arguments or {}
+    decision = security.evaluate(name, arguments)
+
+    if decision.denied:
+        audit(name, arguments, f"DENIED: {decision.reason}",
+              decision.risk.name, "deny")
+        raise ActionError(decision.reason)
+
+    if decision.needs_confirmation and not _approved:
+        audit(name, arguments, "BLOCKED: confirmation required",
+              decision.risk.name, "confirm")
+        raise ActionError(
+            f"'{describe(name, arguments)}' needs your confirmation first.")
+
+    spec = REGISTRY[name]
     allowed = set(spec["params"].keys())
     cleaned = {k: v for k, v in arguments.items() if k in allowed}
 
@@ -574,17 +612,19 @@ def execute(name: str, arguments: dict) -> str:
     try:
         result = fn(**cleaned)
     except ActionError as exc:
-        audit(name, cleaned, f"REFUSED: {exc}")
+        audit(name, cleaned, f"REFUSED: {exc}", decision.risk.name, "run")
         raise
     except TypeError as exc:
-        audit(name, cleaned, f"BAD ARGS: {exc}")
+        audit(name, cleaned, f"BAD ARGS: {exc}", decision.risk.name, "run")
         raise ActionError(f"I could not run {name} with those details.") from exc
     except Exception as exc:  # noqa: BLE001
         logger.exception("Action %s failed", name)
-        audit(name, cleaned, f"ERROR: {exc}")
-        raise ActionError(f"Something went wrong while trying to {describe(name, cleaned).lower()}.") from exc
+        audit(name, cleaned, f"ERROR: {exc}", decision.risk.name, "run")
+        raise ActionError(
+            f"Something went wrong while trying to {describe(name, cleaned).lower()}."
+        ) from exc
 
-    audit(name, cleaned, f"OK: {result[:200]}")
+    audit(name, cleaned, f"OK: {result[:200]}", decision.risk.name, "run")
     return result
 
 

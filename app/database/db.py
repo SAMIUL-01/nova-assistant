@@ -77,6 +77,14 @@ CREATE TABLE IF NOT EXISTS doc_chunks (
 
 CREATE INDEX IF NOT EXISTS idx_chunks_doc ON doc_chunks (document_id, idx);
 CREATE INDEX IF NOT EXISTS idx_docs_conversation ON documents (conversation_id);
+
+-- Which abilities the user has switched on, and which need approval.
+CREATE TABLE IF NOT EXISTS permissions (
+    capability TEXT PRIMARY KEY,
+    enabled    INTEGER NOT NULL DEFAULT 1,
+    always_ask INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT    NOT NULL DEFAULT (datetime('now'))
+);
 """
 
 
@@ -428,3 +436,34 @@ def delete_document(document_id: int) -> Optional[str]:
         conn.execute("DELETE FROM doc_chunks WHERE document_id = ?", (document_id,))
         conn.execute("DELETE FROM documents WHERE id = ?", (document_id,))
     return row["stored_path"]
+
+
+# --------------------------------------------------------------------------
+# Permissions (which abilities are switched on)
+# --------------------------------------------------------------------------
+def list_permissions() -> list:
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT capability, enabled, always_ask, updated_at FROM permissions"
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def set_permission(capability: str, enabled: bool, always_ask: bool = False) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            """
+            INSERT INTO permissions (capability, enabled, always_ask, updated_at)
+            VALUES (?, ?, ?, datetime('now'))
+            ON CONFLICT(capability) DO UPDATE SET
+                enabled    = excluded.enabled,
+                always_ask = excluded.always_ask,
+                updated_at = datetime('now')
+            """,
+            (capability, 1 if enabled else 0, 1 if always_ask else 0),
+        )
+
+
+def reset_permissions() -> None:
+    with get_conn() as conn:
+        conn.execute("DELETE FROM permissions")
