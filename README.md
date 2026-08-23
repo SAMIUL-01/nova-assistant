@@ -144,6 +144,72 @@ remembers about you, and run actions on your computer.
 
 ---
 
+### 🛡️ Security & permission layer
+
+Every tool call passes through one gate before it runs. Nothing bypasses it.
+
+**Risk levels** — each tool is classified, and the classification decides what happens:
+
+| Risk | Examples | Behaviour |
+|---|---|---|
+| `SAFE` | time, list files, read file, system info | runs immediately |
+| `MODERATE` | create file, open an app, open a website | runs immediately |
+| `SENSITIVE` | privacy / external / sending | **always asks first** |
+| `DESTRUCTIVE` | delete, move, git push | **always asks first** |
+
+**Rules that cannot be switched off:**
+
+1. `SENSITIVE` and `DESTRUCTIVE` always require confirmation. You can make Nova
+   stricter, never looser — even setting `ACTIONS_CONFIRM=false` will not let a
+   delete run unattended.
+2. **Unknown tools are denied.** If the model invents `run_shell` or
+   `execute_command`, the gate refuses it. There is no arbitrary-command tool
+   anywhere in the registry, and a test enforces that.
+3. Files stay inside the workspace — checked on every OS, including
+   Windows-style paths on Linux.
+4. Approving an action is **not** a master key: a disabled capability stays
+   disabled even if you press Confirm.
+5. Audit entries are **scrubbed of secrets** (API keys, tokens, passwords,
+   emails) before they reach `data/actions.log`.
+
+**Permission manager** — 🧠 button → *Abilities & permissions*. Switch any
+capability on/off, or tick *always ask me first* to be consulted every time:
+
+| Capability | Covers |
+|---|---|
+| Files | create, read, search, move, delete inside the workspace |
+| PC control | opening applications |
+| Web | opening websites |
+| Git | git commands in your project folder |
+| System info | time, disk space, computer details |
+
+Changes are saved to SQLite and survive a restart.
+
+Set `STRICT_CONFIRM=true` in `.env` to be asked before *everything*, including
+harmless things like creating a file.
+
+---
+
+### ⚡ Command router — one pipeline for voice and text
+
+Typed and spoken commands go through exactly the same function, so the two can
+never drift apart. Voice input is simply text that arrived from a microphone.
+
+Common commands skip the model entirely and run in **~150 ms** instead of a
+second or two:
+
+```
+"open youtube"      "koyta baje"      "open notepad"
+"what time is it"   "system info"     "list files"
+```
+
+Bangla/Banglish phrasings are recognised too. Anything the router does not
+confidently recognise falls through to the model — a wrong fast path is worse
+than a slow one. **Fast paths still pass through the security layer**, so the
+router is not a way around your permissions.
+
+---
+
 ### 🧠 Long-term memory — it knows you
 
 Tell it something once and it remembers in **every future chat**:
