@@ -233,8 +233,12 @@ def test_unknown_action_is_refused():
 
 
 def test_actions_are_logged(client):
+    from app.config import settings
+
     actions.execute("current_time", {})
-    log = Path(os.environ["ACTION_LOG"])
+    # Read the setting, not the environment: another test module may have
+    # changed the variable during collection.
+    log = Path(settings.ACTION_LOG)
     assert log.exists()
     assert "current_time" in log.read_text()
 

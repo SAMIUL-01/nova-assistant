@@ -105,7 +105,7 @@
   }
 
   /** A risky action waiting for the user to allow it. */
-  function addConfirmCard(token, detail) {
+  function addConfirmCard(token, detail, risk) {
     const card = document.createElement("div");
     card.className = "action-card confirm";
 
@@ -116,6 +116,12 @@
     title.className = "action-title";
     title.textContent = detail;
     head.append(title);
+    if (risk) {
+      const badge = document.createElement("span");
+      badge.className = "risk-badge";
+      badge.textContent = risk;
+      head.append(badge);
+    }
 
     const note = document.createElement("div");
     note.className = "action-note";
@@ -721,8 +727,81 @@
   async function openMemory() {
     const data = await refreshMemoryCount();
     renderMemoryList(data);
+    await loadPermissions();
     el.memoryModal.hidden = false;
     closeSidebar();
+  }
+
+  // ------------------------------------------------------ permissions UI
+  async function loadPermissions() {
+    const list = $("permList");
+    const note = $("policyNote");
+    if (!list) return;
+
+    let data;
+    try {
+      data = await api("/api/permissions");
+    } catch (_) {
+      list.innerHTML = '<div class="empty-hint">Could not load permissions.</div>';
+      return;
+    }
+
+    note.textContent =
+      `Risky actions always ask first — that cannot be switched off. ` +
+      `Nova has no shell access, and can only touch ${data.policy.filesystem}.`;
+
+    list.innerHTML = "";
+    data.capabilities.forEach((cap) => {
+      const row = document.createElement("div");
+      row.className = "perm-item";
+
+      const main = document.createElement("label");
+      main.className = "switch";
+      const box = document.createElement("input");
+      box.type = "checkbox";
+      box.checked = cap.enabled;
+      const text = document.createElement("span");
+      text.innerHTML = `<strong>${cap.label}</strong><br><span class="perm-desc">${cap.description}</span>`;
+      main.append(box, text);
+
+      const ask = document.createElement("label");
+      ask.className = "switch perm-ask";
+      const askBox = document.createElement("input");
+      askBox.type = "checkbox";
+      askBox.checked = cap.always_ask;
+      askBox.disabled = !cap.enabled;
+      ask.append(askBox, Object.assign(document.createElement("span"),
+                                       { textContent: "always ask me first" }));
+
+      const save = async () => {
+        try {
+          await api(`/api/permissions/${cap.key}`, {
+            method: "PUT",
+            body: JSON.stringify({ enabled: box.checked, always_ask: askBox.checked }),
+          });
+          askBox.disabled = !box.checked;
+          toast(`${cap.label}: ${box.checked ? "on" : "off"}`);
+        } catch (err) {
+          toast(err.message);
+        }
+      };
+      box.addEventListener("change", save);
+      askBox.addEventListener("change", save);
+
+      row.append(main, ask);
+      list.append(row);
+    });
+  }
+
+  const resetPerms = $("btnResetPerms");
+  if (resetPerms) {
+    resetPerms.addEventListener("click", async () => {
+      try {
+        await api("/api/permissions/reset", { method: "POST" });
+        await loadPermissions();
+        toast("Permissions reset.");
+      } catch (err) { toast(err.message); }
+    });
   }
 
   async function addMemoryFact() {
@@ -904,7 +983,7 @@
           } else {
             placeholder.wrap.remove();
           }
-          addConfirmCard(payload.token, payload.detail);
+          addConfirmCard(payload.token, payload.detail, payload.risk);
           placeholder = addThinking();
         } else if (event === "error") {
           failed = payload.detail || "Sorry, something went wrong. Please try again.";

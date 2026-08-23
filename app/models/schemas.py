@@ -79,6 +79,12 @@ class ActionToken(BaseModel):
     token: str = Field(..., min_length=8, description="Pending action token.")
 
 
+class PermissionUpdate(BaseModel):
+    enabled: bool = Field(..., description="Is this capability switched on?")
+    always_ask: bool = Field(default=False,
+                             description="Confirm every use, even safe ones.")
+
+
 class MemoryCreate(BaseModel):
     content: str = Field(..., description="A fact to remember about the user.")
 
