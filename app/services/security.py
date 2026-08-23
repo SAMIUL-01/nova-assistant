@@ -70,6 +70,20 @@ CAPABILITIES = {
     "system": Capability(
         "system", "System info",
         "Read the time, disk space and computer details."),
+    "media": Capability(
+        "media", "Volume & media",
+        "Change the volume and control whatever music or video is playing."),
+    "screen": Capability(
+        "screen", "Screen",
+        "Take screenshots and see which windows are open. Privacy sensitive.",
+        default_enabled=False),
+    "messaging": Capability(
+        "messaging", "Messaging",
+        "Open WhatsApp, Telegram, Messenger, Instagram or email with a draft "
+        "ready. Nova never presses Send for you."),
+    "scheduler": Capability(
+        "scheduler", "Reminders",
+        "Set reminders and scheduled tasks."),
 }
 
 

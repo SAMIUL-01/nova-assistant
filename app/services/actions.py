@@ -563,6 +563,16 @@ def tool_schemas() -> list:
 def describe(name: str, arguments: dict) -> str:
     """A short human sentence describing what is about to happen."""
     a = arguments or {}
+
+    # Tools registered from other modules bring their own phrasing.
+    spec = REGISTRY.get(name) or {}
+    phrase = spec.get("phrase")
+    if callable(phrase):
+        try:
+            return phrase(a)
+        except Exception:  # noqa: BLE001
+            return f"Run {name}"
+
     return {
         "open_website": f"Open {a.get('site', a.get('url', '?'))}",
         "open_app": f"Open the app '{a.get('name', '?')}'",
@@ -644,3 +654,8 @@ def system_prompt_note() -> str:
         "- After a tool runs, tell the user the result in one short sentence.\n"
         "- Never claim you did something that the tool did not report as done."
     )
+
+
+# Importing this at the end registers the PC-control, web and communication
+# tools into REGISTRY above. It must come last to avoid a circular import.
+from app.services import extra_tools  # noqa: E402,F401  (registers the extra tools)
