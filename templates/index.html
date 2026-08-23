@@ -61,6 +61,7 @@
   <main class="main">
     <header class="header">
       <button class="icon-btn menu-btn" id="btnMenu" aria-label="Open menu">☰</button>
+      <div class="avatar-mini" id="avatarMini" aria-hidden="true"></div>
       <h1 class="header-title" id="headerTitle">{{ app_name }}</h1>
       <button class="icon-btn" id="btnSpeaker" aria-label="Toggle spoken replies"
               title="Speak replies aloud">🔈</button>
@@ -70,7 +71,8 @@
     <!-- Welcome screen (shown when a chat is empty) -->
     <section class="welcome" id="welcome">
       <div class="welcome-inner">
-        <div class="welcome-logo">✨</div>
+        <div id="avatarMain" aria-hidden="true"></div>
+        <div class="avatar-status" id="avatarStatus"></div>
         <h2>Hi, I'm Nova 👋</h2>
         <p>How can I help you today?</p>
         <div class="suggestions">
@@ -158,7 +160,31 @@
 
       <div class="settings-block">
         <h3>Voice</h3>
-        <label class="switch">
+
+        <div class="voice-warning" id="voiceWarning" hidden></div>
+        <div class="voice-current" id="voiceCurrent"></div>
+
+        <select id="voiceSelect" aria-label="Choose Nova's voice"></select>
+
+        <div class="voice-row">
+          <label for="rateRange">Speed</label>
+          <input type="range" id="rateRange" min="0.6" max="1.6" step="0.02" />
+          <span class="value" id="rateValue"></span>
+        </div>
+        <div class="voice-row">
+          <label for="pitchRange">Pitch</label>
+          <input type="range" id="pitchRange" min="0.7" max="1.8" step="0.02" />
+          <span class="value" id="pitchValue"></span>
+        </div>
+        <div class="voice-row">
+          <label for="volumeRange">Volume</label>
+          <input type="range" id="volumeRange" min="0" max="1" step="0.05" />
+          <span class="value" id="volumeValue"></span>
+        </div>
+
+        <button class="ghost-btn" id="btnTestVoice">🔊 Test my voice</button>
+
+        <label class="switch" style="margin-top:12px">
           <input type="checkbox" id="optSpeak" />
           <span>Speak replies aloud</span>
         </label>
@@ -179,6 +205,8 @@
 
 <div class="toast" id="toast" hidden></div>
 
+<script src="/static/js/voice.js"></script>
+<script src="/static/js/avatar.js"></script>
 <script src="/static/js/app.js"></script>
 </body>
 </html>

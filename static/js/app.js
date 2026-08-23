@@ -542,6 +542,7 @@
 
     rec.onstart = () => {
       state.listening = true;
+      setAvatar("listening");
       el.mic.classList.add("listening");
       el.mic.textContent = "⏹";
       el.hint.textContent = "Listening… speak now";
@@ -571,6 +572,7 @@
 
     rec.onend = () => {
       state.listening = false;
+      if (!state.speaking) setAvatar("idle");
       el.mic.classList.remove("listening");
       el.mic.textContent = "🎤";
       el.hint.textContent = "Enter to send · Shift + Enter for a new line";
@@ -619,15 +621,13 @@
   }
 
   function stopSpeaking() {
-    if (window.speechSynthesis && state.speaking) {
-      window.speechSynthesis.cancel();
-      state.speaking = false;
-      updateSpeakerButton();
-    }
+    if (window.NovaVoice) window.NovaVoice.stop();
+    state.speaking = false;
+    updateSpeakerButton();
   }
 
   function speak(markdown, force = false) {
-    if (!window.speechSynthesis) {
+    if (!window.speechSynthesis || !window.NovaVoice) {
       if (force) toast("This browser cannot speak text.");
       return;
     }
@@ -636,21 +636,33 @@
     const text = speechText(markdown);
     if (!text) return;
 
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = navigator.language || "en-US";
-    utterance.rate = 1.02;
+    // Nova always speaks in her own (female) voice. voice.js picks it and
+    // refuses to fall back to a male voice.
+    const ok = window.NovaVoice.speak(text, {
+      onWord: () => window.NovaAvatar && window.NovaAvatar.pulseMouth(),
+    });
 
-    const preferred = window.speechSynthesis
-      .getVoices()
-      .find((v) => v.lang && v.lang.startsWith(utterance.lang.slice(0, 2)));
-    if (preferred) utterance.voice = preferred;
+    if (!ok && force) toast("No voice is available on this device.");
+    if (!window.NovaVoice.femaleAvailable()) {
+      // Told once, not on every reply.
+      if (!localStorage.getItem("novaVoiceWarned")) {
+        localStorage.setItem("novaVoiceWarned", "1");
+        toast("No female voice found on this device — open 🧠 → Voice.", 6000);
+      }
+    }
+  }
 
-    utterance.onstart = () => { state.speaking = true; updateSpeakerButton(); };
-    utterance.onend = () => { state.speaking = false; updateSpeakerButton(); };
-    utterance.onerror = () => { state.speaking = false; updateSpeakerButton(); };
-
-    window.speechSynthesis.speak(utterance);
+  function setAvatar(stateName) {
+    if (window.NovaAvatar) window.NovaAvatar.setState(stateName);
+    const status = $("avatarStatus");
+    if (status) {
+      status.textContent = {
+        idle: "",
+        listening: "listening…",
+        thinking: "thinking…",
+        speaking: "speaking…",
+      }[stateName] || "";
+    }
   }
 
   function updateSpeakerButton() {
@@ -728,6 +740,7 @@
     const data = await refreshMemoryCount();
     renderMemoryList(data);
     await loadPermissions();
+    renderVoiceSettings();
     el.memoryModal.hidden = false;
     closeSidebar();
   }
@@ -850,8 +863,88 @@
     if (e.key === "Escape") el.memoryModal.hidden = true;
   });
 
+
+  // ============================================================ 8b. voice settings
+  function renderVoiceSettings() {
+    if (!window.NovaVoice) return;
+
+    const select = $("voiceSelect");
+    const warning = $("voiceWarning");
+    const current = $("voiceCurrent");
+    if (!select) return;
+
+    const voices = window.NovaVoice.listForSettings();
+    const saved = window.NovaVoice.settings();
+
+    // Warn loudly rather than quietly using a male voice.
+    const note = window.NovaVoice.warning();
+    if (note) {
+      warning.textContent = note;
+      warning.hidden = false;
+    } else {
+      warning.hidden = true;
+    }
+
+    select.innerHTML = "";
+    const auto = document.createElement("option");
+    auto.value = "";
+    auto.textContent = "Automatic — best female voice";
+    select.append(auto);
+
+    voices.forEach((v) => {
+      const option = document.createElement("option");
+      option.value = v.uri;
+      const tag = v.female ? "♀ " : (v.male ? "♂ " : "");
+      option.textContent = `${tag}${v.name} (${v.lang})`;
+      select.append(option);
+    });
+    select.value = saved.voiceURI || "";
+
+    const chosen = window.NovaVoice.pick(navigator.language);
+    current.innerHTML = chosen
+      ? `Currently using <strong>${chosen.name}</strong>`
+      : "No voice available on this device.";
+
+    const bind = (id, key, format) => {
+      const range = $(id);
+      const label = $(id.replace("Range", "Value"));
+      if (!range) return;
+      range.value = saved[key];
+      label.textContent = format(saved[key]);
+      range.addEventListener("input", () => {
+        const value = parseFloat(range.value);
+        label.textContent = format(value);
+        window.NovaVoice.save({ [key]: value });
+      });
+    };
+    bind("rateRange", "rate", (v) => `${v.toFixed(2)}x`);
+    bind("pitchRange", "pitch", (v) => v.toFixed(2));
+    bind("volumeRange", "volume", (v) => `${Math.round(v * 100)}%`);
+
+    select.addEventListener("change", () => {
+      window.NovaVoice.save({ voiceURI: select.value });
+      renderVoiceSettings();
+      window.NovaVoice.speak("Okay, this is my new voice.", {
+        onWord: () => window.NovaAvatar && window.NovaAvatar.pulseMouth(),
+      });
+    });
+
+    const test = $("btnTestVoice");
+    if (test && !test.dataset.bound) {
+      test.dataset.bound = "1";
+      test.addEventListener("click", () => {
+        const ok = window.NovaVoice.speak(
+          "Hi, I'm Nova. I'm here to help you with anything you need.",
+          { onWord: () => window.NovaAvatar && window.NovaAvatar.pulseMouth() });
+        if (!ok) toast("No voice available to test.");
+      });
+    }
+  }
+
   // ============================================================ 9. sending
   function setSending(on) {
+    if (on) setAvatar("thinking");
+    else if (!state.speaking && !state.listening) setAvatar("idle");
     state.sending = on;
     el.send.disabled = on || !el.input.value.trim();
     el.input.disabled = on;
@@ -1096,6 +1189,29 @@
   async function init() {
     applyTheme(localStorage.getItem("theme") || "dark");
     registerServiceWorker();
+
+    // Nova's face: big on the welcome screen, small in the header.
+    if (window.NovaAvatar) {
+      window.NovaAvatar.mount($("avatarMain"));
+      const mini = $("avatarMini");
+      if (mini) {
+        const clone = document.createElement("div");
+        mini.appendChild(clone);
+        window.NovaAvatar.mount(mini);
+      }
+    }
+    if (window.NovaVoice) {
+      // The mouth and the "speaking" pose follow the real voice events.
+      window.NovaVoice.onStateChange = (voiceState) => {
+        state.speaking = voiceState === "speaking";
+        setAvatar(state.speaking ? "speaking"
+                                 : (state.listening ? "listening" : "idle"));
+        updateSpeakerButton();
+      };
+      window.NovaVoice.onVoicesReady = () => {
+        if (!el.memoryModal.hidden) renderVoiceSettings();
+      };
+    }
     autosize();
     updateCharCount();
 
